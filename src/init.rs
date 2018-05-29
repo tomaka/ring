@@ -14,7 +14,7 @@
 
 #[inline(always)]
 pub fn init_once() {
-    #[cfg(not(target_os = "ios"))]
+    #[cfg(not(any(target_os = "ios", target_os = "emscripten")))]
     {
         use std;
         extern { fn GFp_cpuid_setup(); }

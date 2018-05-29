@@ -32,6 +32,7 @@ include = [
     "crypto/chacha/asm/chacha-armv8.pl",
     "crypto/chacha/asm/chacha-x86.pl",
     "crypto/chacha/asm/chacha-x86_64.pl",
+    "crypto/chacha/chacha_enc.c",
     "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl",
     "crypto/cipher_extra/e_aesgcmsiv.c",
     "crypto/cipher_extra/test/aes_128_gcm_siv_tests.txt",
@@ -68,6 +69,7 @@ include = [
     "crypto/fipsmodule/bn/shift.c",
     "crypto/fipsmodule/cipher/e_aes.c",
     "crypto/fipsmodule/cipher/internal.h",
+    "crypto/fipsmodule/digest/md32_common.h",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-armv4.pl",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-x86.pl",
@@ -89,6 +91,8 @@ include = [
     "crypto/fipsmodule/modes/gcm.c",
     "crypto/fipsmodule/modes/internal.h",
     "crypto/fipsmodule/modes/polyval.c",
+    "crypto/fipsmodule/sha/sha256.c",
+    "crypto/fipsmodule/sha/sha512.c",
     "crypto/fipsmodule/sha/asm/sha256-586.pl",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-586.pl",
@@ -105,6 +109,8 @@ include = [
     "crypto/perlasm/x86gas.pl",
     "crypto/perlasm/x86nasm.pl",
     "crypto/perlasm/x86_64-xlate.pl",
+    "crypto/poly1305/poly1305.c",
+    "crypto/poly1305/poly1305_local.h",
     "crypto/poly1305/asm/poly1305-armv4.pl",
     "crypto/poly1305/asm/poly1305-armv8.pl",
     "crypto/poly1305/asm/poly1305-x86.pl",
@@ -113,8 +119,11 @@ include = [
     "include/GFp/aes.h",
     "include/GFp/arm_arch.h",
     "include/GFp/base.h",
+    "include/GFp/chacha.h",
     "include/GFp/cpu.h",
     "include/GFp/mem.h",
+    "include/GFp/poly1305.h",
+    "include/GFp/sha.h",
     "include/GFp/type_check.h",
     "src/aead/aes_gcm.rs",
     "src/aead/aes_tests.txt",
@@ -185,6 +194,7 @@ include = [
     "src/init.rs",
     "src/lib.rs",
     "src/limb.rs",
+    "src/native.rs",
     "src/pbkdf2.rs",
     "src/pkcs8.rs",
     "src/poly1305.rs",
@@ -280,6 +290,9 @@ libc = { version = "0.2.34" }
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "1.0"
+
+[target.'cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64")))'.dependencies]
+bigint = "4.3.0"
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]

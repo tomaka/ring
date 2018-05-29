@@ -88,4 +88,4 @@ pub mod verification;
 #[cfg(feature = "rsa_signing")]
 pub mod signing;
 
-mod bigint;
+pub(crate) mod bigint;

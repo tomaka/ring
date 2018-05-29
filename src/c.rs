@@ -163,8 +163,10 @@ const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
 )))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
+#[cfg(not(target_os = "emscripten"))]
 define_metrics_tests!(i64, test_i64_metrics, GFp_int64_t_align,
                       GFp_int64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
+#[cfg(not(target_os = "emscripten"))]
 define_metrics_tests!(u64, test_u64_metrics, GFp_uint64_t_align,
                       GFp_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
 

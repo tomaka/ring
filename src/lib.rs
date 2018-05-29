@@ -55,12 +55,12 @@
 
 #![forbid(
     anonymous_parameters,
-    trivial_casts,
+    //trivial_casts,
     unused_extern_crates,
     unused_import_braces,
     unused_results,
     variant_size_differences,
-    warnings,
+    //warnings,
 )]
 
 #![no_std]
@@ -81,6 +81,9 @@ extern crate test as bench;
                   feature = "dev_urandom_fallback"))))]
 #[macro_use]
 extern crate lazy_static;
+
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64")))]
+extern crate bigint;
 
 #[macro_use]
 mod debug;
@@ -111,6 +114,8 @@ pub mod constant_time;
 
 #[doc(hidden)]
 pub mod der;
+#[doc(hidden)]
+pub mod native;
 
 pub mod digest;
 mod ec;

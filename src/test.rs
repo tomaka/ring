@@ -297,9 +297,26 @@ pub fn ring_src_path() -> std::path::PathBuf {
 ///
 /// On most platforms, the tests are run by cargo, so it's just the current
 /// working directory.
-#[cfg(not(target_os = "ios"))]
+#[cfg(not(any(target_os = "ios", target_os = "emscripten")))]
 pub fn ring_src_path() -> std::path::PathBuf {
-    std::path::PathBuf::from(".")
+    env!("CARGO_MANIFEST_DIR").into()
+}
+
+/// Returns the path for *ring* source code root.
+///
+/// On most platforms, the tests are run by cargo, so it's just the current
+/// working directory.
+#[cfg(target_os = "emscripten")]
+pub fn ring_src_path() -> std::path::PathBuf {
+    unsafe {
+        extern "C" {
+            fn emscripten_asm_const_int(code: *const u8, ... ) -> i32;
+        }
+        // Note that emscripten doesn't like new lines
+        const CODE: &'static str = concat!(r#"try { FS.mkdir('/src'); FS.mount(NODEFS, { root: '"#, env!("CARGO_MANIFEST_DIR"), r#"' }, '/src'); } catch(error) {}"#, "\0");
+        let _ = emscripten_asm_const_int(CODE as *const _ as *const u8);
+        "/src".into()
+    }
 }
 
 /// Reads test cases out of the file with the path given by
@@ -308,7 +325,7 @@ pub fn ring_src_path() -> std::path::PathBuf {
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
                     where F: FnMut(&str, &mut TestCase)
-                                   -> Result<(), error::Unspecified> {
+                                   -> Result<(), error::Unspecified> {                                       
     let path = ring_src_path().join(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();

@@ -287,7 +287,6 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     acc
 }
 
-
 extern {
     fn GFp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                         a: *const Limb/*[COMMON_OPS.num_limbs]*/,
@@ -297,7 +296,6 @@ extern {
                              b: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn GFp_nistz256_sqr_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                              a: *const Limb/*[COMMON_OPS.num_limbs]*/);
-
     fn GFp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                               a: *const Limb/*[3][COMMON_OPS.num_limbs]*/,
                               b: *const Limb/*[3][COMMON_OPS.num_limbs]*/);
@@ -307,7 +305,6 @@ extern {
                               p_y: *const Limb/*[COMMON_OPS.num_limbs]*/);
     fn GFp_nistz256_point_mul_base(r: *mut Limb/*[3][COMMON_OPS.num_limbs]*/,
                                    g_scalar: *const Limb/*[COMMON_OPS.num_limbs]*/);
-
     fn GFp_p256_scalar_mul_mont(r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
                                 a: *const Limb/*[COMMON_OPS.num_limbs]*/,
                                 b: *const Limb/*[COMMON_OPS.num_limbs]*/);

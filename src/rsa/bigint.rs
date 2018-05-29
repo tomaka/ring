@@ -889,7 +889,7 @@ fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
     }
 }
 
-type N0 = [limb::Limb; N0_LIMBS];
+pub(crate) type N0 = [limb::Limb; N0_LIMBS];
 const N0_LIMBS: usize = 2;
 
 #[cfg(target_pointer_width = "64")]

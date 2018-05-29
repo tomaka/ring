@@ -50,6 +50,7 @@ const X86: &'static str = "x86";
 const X86_64: &'static str = "x86_64";
 const AARCH64: &'static str = "aarch64";
 const ARM: &'static str = "arm";
+const MISC: &'static str = "Unrecognized architecture";
 const NEVER: &'static str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -121,6 +122,11 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[MISC], "crypto/chacha/chacha_enc.c"),
+    (&[MISC], "crypto/poly1305/poly1305.c"),
+    (&[MISC], "crypto/fipsmodule/sha/sha256.c"),
+    (&[MISC], "crypto/fipsmodule/sha/sha512.c"),
 ];
 
 const SHA256_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -138,6 +144,7 @@ const RING_INCLUDES: &'static [&'static str] =
     &["crypto/fipsmodule/aes/internal.h",
       "crypto/fipsmodule/bn/internal.h",
       "crypto/fipsmodule/cipher/internal.h",
+      "crypto/fipsmodule/digest/md32_common.h",
       "crypto/fipsmodule/ec/ecp_nistz256_table.inl",
       "crypto/fipsmodule/ec/ecp_nistz384.inl",
       "crypto/fipsmodule/ec/ecp_nistz.h",
@@ -147,11 +154,15 @@ const RING_INCLUDES: &'static [&'static str] =
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
       "crypto/fipsmodule/modes/internal.h",
+      "crypto/poly1305/poly1305_local.h",
       "include/GFp/aes.h",
       "include/GFp/arm_arch.h",
       "include/GFp/base.h",
+      "include/GFp/chacha.h",
       "include/GFp/cpu.h",
       "include/GFp/mem.h",
+      "include/GFp/poly1305.h",
+      "include/GFp/sha.h",
       "include/GFp/type_check.h",
       "third_party/fiat/curve25519_tables.h",
       "third_party/fiat/internal.h",
@@ -372,10 +383,10 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         }
     }
 
-    let (_, _, perlasm_format) = ASM_TARGETS.iter().find(|entry| {
+    let perlasm_format = ASM_TARGETS.iter().find(|entry| {
         let &(entry_arch, entry_os, _) = *entry;
         entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
-    }).unwrap();
+    }).map(|(_, _, fmt)| fmt);
 
     let is_git = std::fs::metadata(".git").is_ok();
 
@@ -384,27 +395,33 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     let asm_dir = if use_pregenerated { &pregenerated } else { out_dir };
 
-    let perlasm_src_dsts =
-        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()),
-                         perlasm_format);
+    let asm_srcs = if let Some(perlasm_format) = perlasm_format {
+        let perlasm_src_dsts =
+            perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()),
+                            perlasm_format);
 
-    if !use_pregenerated {
-        perlasm(&perlasm_src_dsts[..], target.arch(), perlasm_format,
-                Some(includes_modified));
-    }
+        if !use_pregenerated {
+            perlasm(&perlasm_src_dsts[..], target.arch(), perlasm_format,
+                    Some(includes_modified));
+        }
 
-    let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+        let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
-    // For Windows we also pregenerate the object files for non-Git builds so
-    // the user doesn't need to install the assembler. On other platforms we
-    // assume the C compiler also assembles.
-    if use_pregenerated && target.os() == WINDOWS {
-        // The pregenerated object files always use ".obj" as the extension,
-        // even when the C/C++ compiler outputs files with the ".o" extension.
-        asm_srcs = asm_srcs.iter()
-            .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
-            .collect::<Vec<_>>();
-    }
+        // For Windows we also pregenerate the object files for non-Git builds so
+        // the user doesn't need to install the assembler. On other platforms we
+        // assume the C compiler also assembles.
+        if use_pregenerated && target.os() == WINDOWS {
+            // The pregenerated object files always use ".obj" as the extension,
+            // even when the C/C++ compiler outputs files with the ".o" extension.
+            asm_srcs = asm_srcs.iter()
+                .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
+                .collect::<Vec<_>>();
+        }
+
+        asm_srcs
+    } else {
+        Vec::new()
+    };
 
     let core_srcs = sources_for_arch(target.arch()).into_iter()
         .filter(|p| !is_perlasm(&p))
@@ -574,8 +591,8 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
 
     let mut c = c.get_compiler().to_command();
     let _ = c.arg("-c")
-             .arg(format!("{}{}", target.obj_opt,
-                          out_dir.to_str().expect("Invalid path")))
+             .arg(target.obj_opt)
+             .arg(out_dir.to_str().expect("Invalid path"))
              .arg(file);
     c
 }
@@ -615,8 +632,13 @@ fn run_command(mut cmd: Command) {
 }
 
 fn sources_for_arch(arch: &str) -> Vec<PathBuf> {
+    let is_misc = arch != X86 && arch != X86_64 && arch != AARCH64 && arch != ARM;
+
     RING_SRCS.iter()
-        .filter(|&&(archs, _)| archs.is_empty() || archs.contains(&arch))
+        .filter(|&&(archs, _)| {
+            archs.is_empty() || archs.contains(&arch) ||
+                (is_misc && archs.contains(&MISC))
+        })
         .map(|&(_, p)| PathBuf::from(p))
         .collect::<Vec<_>>()
 }

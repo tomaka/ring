@@ -91,6 +91,8 @@ extern "C" {
 #define OPENSSL_PNACL
 #elif defined(__myriad2__)
 #define OPENSSL_32_BIT
+#elif defined(__EMSCRIPTEN__)
+#define OPENSSL_32_BIT
 #else
 // Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
 // little-endian architectures. Functions will not produce the correct answer
@@ -124,6 +126,9 @@ extern "C" {
 
 
 typedef struct bignum_st BIGNUM;
+typedef struct sha256_state_st SHA256_CTX;
+typedef struct sha512_state_st SHA512_CTX;
+typedef struct sha_state_st SHA_CTX;
 
 
 #if defined(__cplusplus)
