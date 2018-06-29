@@ -74,8 +74,7 @@ pub unsafe extern "C" fn GFp_nistz256_add(r: *mut Limb/*[COMMON_OPS.num_limbs]*/
 }
 
 fn add(a: U256, b: U256) -> U256 {
-    let (sum, overflow) = a.overflowing_add(b);
-	if overflow { U256::max_value() - N + U256::one() } else { sum % N }
+	U256::from((U512::from(a) + U512::from(b)) % U512::from(N))
 }
 
 #[no_mangle]
@@ -129,7 +128,7 @@ fn tripled(a: U256) -> U256 {
 
 fn p_double(x: U256, y: U256, z: U256) -> (U256, U256, U256) {
 	if y == U256::zero() {
-		panic!("doubling infinity!");
+		return (U256::zero(), U256::zero(), U256::zero())
 	}
 
 	// S = 4*X*Y^2
@@ -168,6 +167,16 @@ pub unsafe extern "C" fn GFp_nistz256_point_add(r: *mut Limb/*[3][COMMON_OPS.num
 }
 
 fn p_add(a_x: U256, a_y: U256, a_z: U256, b_x: U256, b_y: U256, b_z: U256) -> (U256, U256, U256) {
+    if b_z.is_zero() || a_z.is_zero() {
+         if b_z.is_zero() && a_z.is_zero() {
+             return (0.into(), 0.into(), 0.into())
+         } else if b_z.is_zero() {
+             return (a_x, a_y, a_z)
+         } else if a_z.is_zero() {
+             return (b_x, b_y, b_z)
+         }
+     }
+
 	// U1 = X1*Z2^2
 	let u1 = mul(a_x, squared(b_z));
 	// U2 = X2*Z1^2
@@ -180,7 +189,7 @@ fn p_add(a_x: U256, a_y: U256, a_z: U256, b_x: U256, b_y: U256, b_z: U256) -> (U
 
 	if u1 == u2 {
 		if s1 != s2 {
-			panic!("point at infinity!");
+			return (U256::zero(), U256::zero(), U256::zero())
 		} else {
 			return p_double(a_x, a_y, a_z);
 		}
@@ -214,8 +223,33 @@ pub unsafe extern "C" fn GFp_nistz256_point_add_affine(
     let b = b as *const [U256; 2];
     let r = r as *mut [U256; 3];
 
-    let out = p_add((*a)[0], (*a)[1], (*a)[2], (*b)[0], (*b)[1], U256::from(1));
-    *r = [out.0, out.1, out.2];
+	// TODO: use constant
+	let r_inv = U256::from_dec_str("115792089183396302114378112356516095823261736990586219612555396166510339686400").unwrap();
+
+	let b_x: U256 = (*b)[0];
+	let b_y: U256 = (*b)[1];
+
+	if b_x.is_zero() && b_y.is_zero() {
+		// a + inf = a
+		*r = *a;
+		return;
+	}
+
+	// b_x = b_x * r_inv^2 (mod N)
+	let b_x: U256 = (((b_x.full_mul(r_inv) % U512::from(N)) * U512::from(r_inv)) % U512::from(N)).into();
+	// b_x = b_x * r_inv^3 (mod N)
+	let b_y: U256 = ((((b_y.full_mul(r_inv) % U512::from(N)) * U512::from(r_inv)) % U512::from(N)) * U512::from(r_inv) % U512::from(N))
+		.into();
+
+	if (*a)[2].is_zero() {
+		// inf + b = b (in jacobian)
+		*r = [b_x, b_y, U256::one()];
+		return;
+	}
+
+    let (r_x, r_y, r_z) = p_add((*a)[0], (*a)[1], (*a)[2], b_x, b_y, U256::from(1));
+
+    *r = [r_x, r_y, r_z];
 }
 
 #[no_mangle]
