@@ -132,7 +132,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     #
     # DEBUG mode is needed because debug symbols are needed for coverage
     # tracking.
-    kcov = (os == "linux" and compiler == gcc and rust == "nightly" and
+    kcov = (os == "linux" and compiler == gcc and rust == "stable" and
             mode == "DEBUG")
 
     template = entry_template

@@ -159,8 +159,10 @@ pub(super) trait Word:
 
     type InputBytes: Copy;
 
+    #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self;
 
+    #[inline]
     fn rotr(self, count: u32) -> Self;
 }
 
@@ -273,12 +275,11 @@ impl Word for Wrapping<u64> {
     const ZERO: Self = Wrapping(0);
     type InputBytes = [u8; 8];
 
-    #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self {
         Wrapping(u64::from_be_bytes(input))
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotr(self, count: u32) -> Self {
         Wrapping(self.0.rotate_right(count))
     }

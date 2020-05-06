@@ -131,6 +131,12 @@ $code.=<<___;
 .quad	0x3320646e61707865,0x6b20657479622d32		// endian-neutral
 .Lone:
 .long	1,0,0,0
+.LGFp_armcap_P:
+#ifdef	__ILP32__
+.long	GFp_armcap_P-.
+#else
+.quad	GFp_armcap_P-.
+#endif
 .asciz	"ChaCha20 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
 .text
@@ -140,14 +146,11 @@ $code.=<<___;
 .align	5
 GFp_ChaCha20_ctr32:
 	cbz	$len,.Labort
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
-	adrp	@x[0],:pg_hi21_nc:GFp_armcap_P
-#else
 	adrp	@x[0],:pg_hi21:GFp_armcap_P
-#endif
 	cmp	$len,#192
 	b.lo	.Lshort
-	ldr	w17,[@x[0],:lo12:GFp_armcap_P]
+	add	@x[0],@x[0],:lo12:GFp_armcap_P
+	ldr	w17,[@x[0]]
 	tst	w17,#ARMV7_NEON
 	b.ne	ChaCha20_neon
 
